@@ -12,8 +12,8 @@ import time
 from os import listdir
 from decode import *
 
-dirname = 'data/read_1_thread_500/'
-savename = "csv_for_train/read_1_thread_500.csv"
+dirname = 'data/read_diff_disb/'
+savename = "csv_for_train/read_diff_disb.csv"
 area_num = 2
 tablelist = [45,47]  #[95,97,113,114] [95,97,101,103,113,114]，[43,45],[45,47]
 

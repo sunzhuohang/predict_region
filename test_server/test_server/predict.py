@@ -16,12 +16,12 @@ from . import globalvar
 kk = 0
 history_data =[]
 predict_message = []
-class tempVar:
-    data = {}
+
 
 #http从pd请求需要的数据
 def get_http_data(url):
     data = []
+
 
     a = requests.get(url)
     load_dict = json.loads(a.content.decode('utf-8'))
@@ -58,7 +58,7 @@ def get_http_data(url):
     return data,nowtime
 
 #把data整合成一行输入,使用全局变量
-def get_line_input(output_size, url,tablelist):
+def get_line_input(output_size, url,tablelist,refer_data):
     area = [0 for i in range(output_size)]
     num = [0 for i in range(output_size)]
     key_range = [['',''] for i in range(output_size)]
@@ -89,10 +89,10 @@ def get_line_input(output_size, url,tablelist):
                 if next_tableid != tableid:
                     endsign[tableindex] = 1
                     key_range[tableindex][1] = nowdata[i][1]
-    #tempVar.data['key_range'] = key_range
+    #refer_data['key_range'] = key_range
     for i in range(output_size):
-        tempVar.data['table_info'][i]['start_key'] = key_range[i][0]
-        tempVar.data['table_info'][i]['end_key'] = key_range[i][1]
+        refer_data['table_info'][i]['start_key'] = key_range[i][0]
+        refer_data['table_info'][i]['end_key'] = key_range[i][1]
 
     now = time.localtime(time.time())  # (now.tm_year, now.tm_mon, now.tm_mday, now.tm_hour, now.tm_min)
 
@@ -108,7 +108,7 @@ def get_line_input(output_size, url,tablelist):
 #按照time_step生成预测数据,实际中得不到预测的10分钟后的数据
 def get_predict_data(time_step):
     data_test = history_data[-time_step : ]
-    print(data_test)
+    #print(data_test)
     maxnum = np.max(data_test, axis=0)
     normalized_test_data = data_test / maxnum
 
@@ -154,7 +154,7 @@ def lstm(X,weights,biases,input_size,rnn_unit,keep_prob):
 
 #——————————————————模型—————————————————
 def train_lstm(input_size,output_size,lr,rnn_unit,weights,biases,batch_size,time_step,kp,url,
-               err_eval_step,predict_step,tablelist,save_model_path,save_model_name):
+               err_eval_step,predict_step,tablelist,save_model_path,save_model_name,refer_data):
     X=tf.placeholder(tf.float32, shape=[None,time_step,input_size])
     Y=tf.placeholder(tf.float32, shape=[None,output_size])
     keep_prob = tf.placeholder('float')
@@ -187,8 +187,8 @@ def train_lstm(input_size,output_size,lr,rnn_unit,weights,biases,batch_size,time
                 pass
             else:
                 label += 1
-            get_line_input(output_size, url,tablelist)
-            print('label:',label)
+            get_line_input(output_size, url,tablelist,refer_data)
+            #print('label:',label)
             if label >= time_step + predict_step:
                 train_num += 1
             if label >= time_step:
@@ -213,14 +213,13 @@ def train_lstm(input_size,output_size,lr,rnn_unit,weights,biases,batch_size,time
                         beginindex = batch_size + time_step - 1 - i
                         last_y = history_data[beginindex:beginindex + predict_step, 1:]
                         mae = mean_absolute_error(last_predict, last_y) / 1024
-                        print(('平均绝对误差(mae): %dKB' % mae),
-                              (mean_absolute_error(last_predict,last_y,multioutput="raw_values")/1024).astype(np.int))
+                        #print(('平均绝对误差(mae): %dKB' % mae),(mean_absolute_error(last_predict,last_y,multioutput="raw_values")/1024).astype(np.int))
                         aa = last_y.sum() / (predict_step * output_size * 1024)
-                        print('实际值的平均值：%dKB' % aa)
-                        print('误差百分比：%.2f' % (100 * mae / aa) + '%')
+                        #print('实际值的平均值：%dKB' % aa)
+                        #print('误差百分比：%.2f' % (100 * mae / aa) + '%')
                         r_square_temp = r2_score(last_predict, last_y, multioutput="raw_values")
                         r_square_total_temp = r2_score(last_predict, last_y)
-                        print(r_square_total_temp, r_square_temp)
+                        #print(r_square_total_temp, r_square_temp)
                         if r_square_total_temp > r_square_total:
                             r_square = r_square_temp.tolist()
                             r_square_total = r_square_total_temp
@@ -228,15 +227,15 @@ def train_lstm(input_size,output_size,lr,rnn_unit,weights,biases,batch_size,time
                 # plt.pause(0.5)
                 # ax.plot(list(range(label,label + predict_step)), predict_message[:,0], color='b')
                 #更新要发送的数据,其中每个表的key范围在get_line_input中更新
-                tempVar.data['time'] = int(time.time())
-                tempVar.data['predict_step'] = predict_step
-                tempVar.data['history_r2_score_total'] = r_square_total
-                tempVar.data['table_num'] = output_size
+                refer_data['time'] = int(time.time())
+                refer_data['predict_step'] = predict_step
+                refer_data['history_r2_score_total'] = r_square_total
+                refer_data['table_num'] = output_size
                 for i in range(output_size):
-                    tempVar.data['table_info'][i]['max_value'] =maxvalue[i]
-                    tempVar.data['table_info'][i]['min_value'] =minvalue[i]
-                    tempVar.data['table_info'][i]['predict'] =predict_message[-predict_step:][:,i].tolist()
-                    tempVar.data['table_info'][i]['history_r2_score'] =r_square[i]
+                    refer_data['table_info'][i]['max_value'] =maxvalue[i]
+                    refer_data['table_info'][i]['min_value'] =minvalue[i]
+                    refer_data['table_info'][i]['predict'] =predict_message[-predict_step:][:,i].tolist()
+                    refer_data['table_info'][i]['history_r2_score'] =r_square[i]
 
             #训练
             if label>=batch_size+time_step+predict_step-1 and train_num == batch_size:
@@ -244,7 +243,7 @@ def train_lstm(input_size,output_size,lr,rnn_unit,weights,biases,batch_size,time
                 train_x, train_y = get_train_data(batch_size, time_step,predict_step)#x:(batch_size, time_step, input_size)y:(batch_size, output_size)
                 train_y = np.array(train_y)[:, 1:input_size].tolist()  # 如果输入加上时间维度，这里就需要加上
                 _, loss_, M, MM = sess.run([train_op, loss, m, mm],feed_dict={X: train_x,Y: train_y,keep_prob: kp})
-                print('label,loss: ',label, loss_)
+                #print('label,loss: ',label, loss_)
                 train_num = 0
                 saver.save(sess, save_model_path + save_model_name)
 
@@ -258,17 +257,17 @@ def start_predict():
     #train_end = 200  # 训练集截取到的位置
     lr = 0.0004  # 学习率
     #train_time = 100  # 所有数据的训练轮次
-    batch_size = 30  # 每次训练的一个批次的大小
-    time_step = 20  # 前time_step步来预测下一步
+    batch_size = 30  # 每次训练的一个批次的大小 
+    time_step = 20  # 前time_step步来预测下一步 
     predict_step = 20  #预测predict_step分钟后的负载
     err_eval_step = 2  #把预测曲线和前后几分钟的实际曲线相比较，取误差最小的值当成预测误差。
     kp = 1  # dropout保留节点的比例
-    tempVar.data = globalvar.get_demo_value()
-    tempVar.data['table_info'] =[{} for i in range(output_size)]
+    refer_data = globalvar.get_regions()
+    refer_data['table_info'] =[{} for i in range(output_size)]
     # 'http://192.168.1.128:2379/pd/api/v1/regions'
-    url = 'http://10.233.57.252:2379/pd/api/v1/regions'
+    url = 'http://10.233.22.183:2379/pd/api/v1/regions'
     tablelist = [45, 47]  # 4个表id [95, 97, 113, 114]
-    save_model_path = './save/'  # checkpoint存在的目录
+    save_model_path = './save/read_diff_disb'  # checkpoint存在的目录
     save_model_name = 'MyModel'  # saver.save(sess, './save/MyModel') 保存模型
 
     global history_data
@@ -288,4 +287,4 @@ def start_predict():
         'out': tf.Variable(tf.constant(0.1, shape=[output_size, ]))
     }
     train_lstm(input_size,output_size,lr,rnn_unit,weights,biases,batch_size,
-               time_step,kp,url,err_eval_step,predict_step,tablelist,save_model_path,save_model_name)
+               time_step,kp,url,err_eval_step,predict_step,tablelist,save_model_path,save_model_name,refer_data)
