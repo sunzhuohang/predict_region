@@ -22,7 +22,7 @@ import subprocess
 
 minReplicas = 3
 maxReplicas = 4
-scaleIntervalmins = 10
+#scaleIntervalmins = 10
 averageUtilization = 10.0/3.0
 
 
@@ -150,7 +150,7 @@ def train_lstm(input_size,output_size,lr,rnn_unit,weights,biases,batch_size,time
         else:
             print('No Model')
 
-        last_scale_time = -scaleIntervalmins
+        #last_scale_time = -scaleIntervalmins
         current_replicas = init_tikv_replicas
         label = 0  # 当前的序号
         train_num = 0 #累积多久训练一次
@@ -175,17 +175,18 @@ def train_lstm(input_size,output_size,lr,rnn_unit,weights,biases,batch_size,time
 
                 # 计算期望副本数
                 pre_replicas = ceil(predict[i] / averageUtilization)
+
+                #负载下降时不用提前减少节点，根据实际值
+                if pre_replicas < current_replicas :
+                    pre_replicas = ceil(history_data[-1] / averageUtilization)
+
                 if pre_replicas > maxReplicas:
                     pre_replicas = maxReplicas
                 if pre_replicas < minReplicas:
                     pre_replicas = minReplicas
 
-                #负载下降时不用提前减少节点
-                if pre_replicas < current_replicas :
-                    pre_replicas = ceil(history_data[-1] / averageUtilization)
-
-                current_replicas = pre_replicas
                 refer_data['recommendedReplicas'] = pre_replicas
+                current_replicas = pre_replicas
                 print("label_cpu:%d, time:%s, predict_step:%d, predict_tikv_cpu_usage:%f, predict_tikv_replicas:%d"
                       % (label, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), predict_step, predict[i], pre_replicas))
 
