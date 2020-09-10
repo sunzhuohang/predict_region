@@ -1,6 +1,7 @@
 # predict_region
 test_server是django程序，读取pd端口region信息，预测结果放在：http://0.0.0.0:8000  
 在test_server目录下命令行输入：  
+
 python manage.py runserver 0.0.0.0:8000 --noreload
 
 # 获取数据
@@ -29,7 +30,11 @@ python manage.py runserver 0.0.0.0:8000 --noreload
 # 预测
 预测需要在集群上，拷贝test_server这个django程序到集群上（包括预训练生成的文件夹），
 需要先运行一段时间负载，然后激活环境：
+
 conda activate szh   //激活hust虚拟环境
+
 在manage.py同级目录下命令行输入：
+
 python manage.py runserver 0.0.0.0:8000 --noreload st-2 pd-team-s2 10.233.18.170:9090 /data2/hust_tmp/cluster/tidb-cluster.yaml （端口号可以任意设置）
+
 curl http://172.16.4.4:8000/tikv_replicas  //验证端口是否可以访问
