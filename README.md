@@ -1,9 +1,3 @@
-# predict_region
-test_server是django程序，读取pd端口region信息，预测结果放在：http://0.0.0.0:8000  
-在test_server目录下命令行输入：  
-
-python manage.py runserver 0.0.0.0:8000 --noreload
-
 # 获取数据
 在集群上运行go-ycsb，然后从grafana监控中手动选择cpu监控数据做离线的训练。
 如图在tikv面板下cluster下的cpu选择一个时间段，export csv
